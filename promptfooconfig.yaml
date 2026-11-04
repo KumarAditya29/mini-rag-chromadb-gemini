@@ -1,0 +1,54 @@
+# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
+description: Mini RAG evaluation (faithfulness, answer relevance, refusal)
+
+# Models (all read GEMINI_API_KEY from .env):
+#   RAG generation : gemini-3.6-flash      (model used for this evaluation, set by rag_model
+#                                           below; the normal CLI default stays gemini-3.8-flash)
+#   Judge          : gemini-3.5-flash-lite
+#   Embeddings     : gemini-embedding-001  (answer-relevance similarity)
+
+# The test question is passed straight through to the RAG pipeline.
+prompts:
+  - "{{query}}"
+
+# System under test: the real application pipeline (query.run_rag).
+providers:
+  - id: file://eval/rag_provider.py
+    label: mini-rag (gemini-3.6-flash)
+    # Pause 25 s after each RAG call (see rate limiting below). This must be set
+    # here: the Python provider ignores evaluateOptions.delay.
+    delay: 25000
+    config:
+      pythonExecutable: .venv/bin/python
+      # Model used for this evaluation. Remove this line to evaluate the
+      # normal CLI default (gemini-3.8-flash) instead.
+      rag_model: gemini-3.6-flash
+
+defaultTest:
+  options:
+    provider:
+      text:
+        id: google:gemini-3.5-flash-lite
+        config:
+          temperature: 0
+      embedding:
+        id: google:embedding:gemini-embedding-001
+
+tests: file://eval/tests.yaml
+
+# Rate limiting. Tests run one at a time; each RAG call is followed by the
+# provider's 25 s delay, and each test is graded right after its answer:
+#   - generation: <= ~2 req/min, 12 req/run
+#   - judge: <= ~5 calls per test, so <= ~10 req/min
+# Quotas depend on the model and account tier; raise delay if a limit is lower.
+# timeoutMs (a per-test cap) also stops Promptfoo from postponing all grading
+# into one burst at the end, which it does by default with maxConcurrency 1.
+# Promptfoo retries 429s on its own; eval/rag_provider.py backs off on 503s
+# and per-minute 429s from generation.
+evaluateOptions:
+  maxConcurrency: 1
+  timeoutMs: 600000
+
+outputPath:
+  - eval/results/results.json
+  - eval/results/report.html
