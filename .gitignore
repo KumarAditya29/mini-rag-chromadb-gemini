@@ -3,3 +3,9 @@
 chroma_db/
 __pycache__/
 *.pyc
+
+# Evaluation artifacts (Promptfoo outputs may include prompts, answers, config)
+eval/results/
+.promptfoo/
+node_modules/
+eval/runs/

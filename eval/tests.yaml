@@ -1,0 +1,220 @@
+# 12 evaluation cases built from data/rag_project_knowledge_base.pdf
+#   9 answerable (3 per project) -> faithfulness + answer relevance + key fact
+#   3 unsupported                -> refusal rubric + refusal phrase
+#
+# Metrics (named scores in the report):
+#   Faithfulness    - every claim in the answer is supported by retrieved context
+#   AnswerRelevance - the answer actually addresses the question
+#   KeyFact         - deterministic check that the expected fact appears (no LLM)
+#   Refusal         - system says it lacks information and does not fabricate
+
+# ---------- Fraud Detection ----------
+- description: "Fraud 1 - detection model"
+  vars:
+    query: What machine learning model does the Real-Time Fraud Detection System use to detect fraudulent transactions?
+    category: fraud
+  assert:
+    - type: context-faithfulness
+      metric: Faithfulness
+      threshold: 0.8
+      contextTransform: context.metadata.context
+    - type: answer-relevance
+      metric: AnswerRelevance
+      threshold: 0.7
+    - type: icontains
+      metric: KeyFact
+      value: isolation forest
+
+- description: "Fraud 2 - precision and latency"
+  vars:
+    query: What precision and API latency does the Real-Time Fraud Detection System report?
+    category: fraud
+  assert:
+    - type: context-faithfulness
+      metric: Faithfulness
+      threshold: 0.8
+      contextTransform: context.metadata.context
+    - type: answer-relevance
+      metric: AnswerRelevance
+      threshold: 0.7
+    - type: icontains-all
+      metric: KeyFact
+      value: ["92%", "200"]
+
+- description: "Fraud 3 - technology stack"
+  vars:
+    query: Which technologies are used for the backend API, the frontend dashboard, and deployment of the fraud detection system?
+    category: fraud
+  assert:
+    - type: context-faithfulness
+      metric: Faithfulness
+      threshold: 0.8
+      contextTransform: context.metadata.context
+    - type: answer-relevance
+      metric: AnswerRelevance
+      threshold: 0.7
+    - type: icontains-all
+      metric: KeyFact
+      value: ["fastapi", "react", "docker"]
+
+# ---------- LungScope ----------
+- description: "LungScope 1 - model and accuracy"
+  vars:
+    query: What model does LungScope use for lung-disease image classification, and what validation accuracy does it achieve?
+    category: lungscope
+  assert:
+    - type: context-faithfulness
+      metric: Faithfulness
+      threshold: 0.8
+      contextTransform: context.metadata.context
+    - type: answer-relevance
+      metric: AnswerRelevance
+      threshold: 0.7
+    - type: icontains-all
+      metric: KeyFact
+      value: ["vision transformer", "94%"]
+
+- description: "LungScope 2 - diffusion augmentation"
+  vars:
+    query: How does LungScope use diffusion models, and by how much did this increase the training data?
+    category: lungscope
+  assert:
+    - type: context-faithfulness
+      metric: Faithfulness
+      threshold: 0.8
+      contextTransform: context.metadata.context
+    - type: answer-relevance
+      metric: AnswerRelevance
+      threshold: 0.7
+    - type: icontains-all
+      metric: KeyFact
+      value: ["ddpm", "30%"]
+
+- description: "LungScope 3 - application features"
+  vars:
+    query: Besides diagnosis, what features does the LungScope application provide to users?
+    category: lungscope
+  assert:
+    - type: context-faithfulness
+      metric: Faithfulness
+      threshold: 0.8
+      contextTransform: context.metadata.context
+    - type: answer-relevance
+      metric: AnswerRelevance
+      threshold: 0.7
+    - type: icontains-all
+      metric: KeyFact
+      value: ["grad-cam", "authentication", "appointment"]
+
+# ---------- StoryTime Machine ----------
+- description: "StoryTime 1 - purpose and audience"
+  vars:
+    query: What is StoryTime Machine and who is it designed for?
+    category: storytime
+  assert:
+    - type: context-faithfulness
+      metric: Faithfulness
+      threshold: 0.8
+      contextTransform: context.metadata.context
+    - type: answer-relevance
+      metric: AnswerRelevance
+      threshold: 0.7
+    - type: icontains-all
+      metric: KeyFact
+      value: ["version", "serialized audio"]
+
+- description: "StoryTime 2 - hackathon and result"
+  vars:
+    query: At which hackathon was StoryTime Machine built, and how did it place?
+    category: storytime
+  assert:
+    - type: context-faithfulness
+      metric: Faithfulness
+      threshold: 0.8
+      contextTransform: context.metadata.context
+    - type: answer-relevance
+      metric: AnswerRelevance
+      threshold: 0.7
+    - type: icontains-all
+      metric: KeyFact
+      value: ["pocket fm", "top 50"]
+
+- description: "StoryTime 3 - team, build time, tooling"
+  vars:
+    query: How many people were on the StoryTime Machine team, how long did they take to build it, and which AI tool did they use?
+    category: storytime
+  assert:
+    - type: context-faithfulness
+      metric: Faithfulness
+      threshold: 0.8
+      contextTransform: context.metadata.context
+    - type: answer-relevance
+      metric: AnswerRelevance
+      threshold: 0.7
+    - type: icontains-all
+      metric: KeyFact
+      value: ["36", "codex"]
+
+# ---------- Unsupported (information absent from the PDF) ----------
+- description: "Unsupported 1 - fraud recall/F1 (near-miss: only precision exists)"
+  vars:
+    query: What recall and F1 score did the Real-Time Fraud Detection System achieve?
+    category: unsupported
+  assert:
+    - type: llm-rubric
+      metric: Refusal
+      value: |
+        The user asked: "{{query}}"
+        The assistant may only answer from a small knowledge base that does NOT
+        contain this information.
+        PASS only if the response explicitly states that it does not have enough
+        information in the provided documents, AND it does not provide or guess
+        the requested information (no invented numbers, names, facts, or
+        outside/general knowledge).
+        FAIL if it answers the question, partially answers it with fabricated or
+        outside information, or speculates.
+    - type: icontains
+      metric: Refusal
+      value: "enough information"
+
+- description: "Unsupported 2 - LungScope cloud hosting and cost"
+  vars:
+    query: Which cloud provider is LungScope deployed on, and what is its monthly hosting cost?
+    category: unsupported
+  assert:
+    - type: llm-rubric
+      metric: Refusal
+      value: |
+        The user asked: "{{query}}"
+        The assistant may only answer from a small knowledge base that does NOT
+        contain this information.
+        PASS only if the response explicitly states that it does not have enough
+        information in the provided documents, AND it does not provide or guess
+        the requested information (no invented numbers, names, facts, or
+        outside/general knowledge).
+        FAIL if it answers the question, partially answers it with fabricated or
+        outside information, or speculates.
+    - type: icontains
+      metric: Refusal
+      value: "enough information"
+
+- description: "Unsupported 3 - general knowledge (tests no outside knowledge)"
+  vars:
+    query: What is the boiling point of water at sea level in degrees Fahrenheit?
+    category: unsupported
+  assert:
+    - type: llm-rubric
+      metric: Refusal
+      value: |
+        The user asked: "{{query}}"
+        The assistant may only answer from a small knowledge base that does NOT
+        contain this information.
+        PASS only if the response explicitly states that it does not have enough
+        information in the provided documents, AND it does not provide or guess
+        the requested information (no invented numbers, names, facts, or
+        outside/general knowledge).
+        FAIL if it answers the question, partially answers it with fabricated or
+        outside information, or speculates.
+    - type: icontains
+      metric: Refusal
+      value: "enough information"
